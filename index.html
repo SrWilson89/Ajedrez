@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ajedrez Completo</title>
+    <title>Ajedrez con IA Avanzada</title>
     <style>
         * {
             margin: 0;
@@ -116,6 +116,29 @@
             cursor: pointer;
             margin: 10px;
         }
+
+        .scoreboard {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            font-size: 20px;
+        }
+
+        .menu {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .menu button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background: #333;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -126,6 +149,16 @@
             <div class="chess-board" id="board"></div>
         </div>
         <div class="captured-pieces" id="capturedWhite"></div>
+        <div class="scoreboard">
+            <div>Victorias Jugador: <span id="playerWins">0</span></div>
+            <div>Victorias IA: <span id="aiWins">0</span></div>
+        </div>
+        <div class="menu">
+            <button id="toggleAI">Activar IA</button>
+            <button id="resetGame">Reiniciar Juego</button>
+            <button id="saveGame">Guardar Partida</button>
+            <button id="loadGame">Cargar Partida</button>
+        </div>
     </div>
 
     <div class="promotion-modal" id="promotionModal">
@@ -141,11 +174,20 @@
         const capturedBlack = document.getElementById('capturedBlack');
         const capturedWhite = document.getElementById('capturedWhite');
         const promotionModal = document.getElementById('promotionModal');
+        const playerWins = document.getElementById('playerWins');
+        const aiWins = document.getElementById('aiWins');
+        const toggleAIButton = document.getElementById('toggleAI');
+        const resetGameButton = document.getElementById('resetGame');
+        const saveGameButton = document.getElementById('saveGame');
+        const loadGameButton = document.getElementById('loadGame');
         let selectedPiece = null;
         let isWhiteTurn = true;
         let capturedPieces = { white: [], black: [] };
         let hasKingMoved = { white: false, black: false };
-        let hasRookMoved = { white: [false, false], black: [false, false] }; // [left rook, right rook]
+        let hasRookMoved = { white: [false, false], black: [false, false] };
+        let isAIActive = false;
+        let playerScore = 0;
+        let aiScore = 0;
 
         // Posición inicial del tablero
         const initialBoard = [
@@ -159,6 +201,7 @@
             ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖']
         ];
 
+        // Función para crear el tablero
         function createBoard() {
             board.innerHTML = ''; // Limpiar el tablero
             for (let row = 0; row < 8; row++) {
@@ -174,7 +217,10 @@
             }
         }
 
+        // Función para manejar clics en el tablero
         function handleSquareClick(event) {
+            if (isAIActive && !isWhiteTurn) return; // No permitir movimientos del jugador durante el turno de la IA
+
             const square = event.target;
             const row = parseInt(square.dataset.row);
             const col = parseInt(square.dataset.col);
@@ -183,6 +229,9 @@
             // Si ya hay una pieza seleccionada y se hace clic en una casilla válida
             if (selectedPiece && square.classList.contains('possible-move')) {
                 movePiece(selectedPiece, square);
+                if (isAIActive && !isWhiteTurn) {
+                    setTimeout(makeAIMove, 500); // La IA hace su movimiento después de un breve retraso
+                }
                 return;
             }
 
@@ -213,10 +262,12 @@
             }
         }
 
+        // Función para verificar si una pieza es blanca
         function isPieceWhite(piece) {
             return '♔♕♖♗♘♙'.includes(piece);
         }
 
+        // Función para mostrar movimientos válidos
         function showValidMoves(row, col, piece) {
             clearPossibleMoves();
             switch (piece) {
@@ -340,6 +391,7 @@
             }
         }
 
+        // Función para añadir un movimiento válido
         function addPossibleMove(row, col, piece) {
             if (row < 0 || row >= 8 || col < 0 || col >= 8) return false;
             const targetSquare = getSquare(row, col);
@@ -350,6 +402,7 @@
             return !targetPiece;
         }
 
+        // Función para limpiar movimientos válidos
         function clearPossibleMoves() {
             const squares = document.querySelectorAll('.square');
             squares.forEach(square => {
@@ -357,6 +410,7 @@
             });
         }
 
+        // Función para mover una pieza
         function movePiece(from, to) {
             const fromRow = parseInt(from.dataset.row);
             const fromCol = parseInt(from.dataset.col);
@@ -404,8 +458,16 @@
             // Cambiar turno
             isWhiteTurn = !isWhiteTurn;
             turnIndicator.textContent = `Turno: ${isWhiteTurn ? 'Blancas' : 'Negras'}`;
+
+            // Verificar jaque mate o ahogado
+            if (isCheckmate()) {
+                alert(isWhiteTurn ? 'Negras ganan!' : 'Blancas ganan!');
+                updateScore(isWhiteTurn ? 'ai' : 'player');
+                resetGame();
+            }
         }
 
+        // Función para mostrar el modal de promoción
         function showPromotionModal(square) {
             promotionModal.style.display = 'block';
             const options = document.querySelectorAll('.promotion-option');
@@ -417,14 +479,130 @@
             });
         }
 
+        // Función para obtener una casilla del tablero
         function getSquare(row, col) {
             return document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
         }
 
+        // Función para actualizar las piezas capturadas
         function updateCapturedPieces() {
             capturedWhite.textContent = capturedPieces.white.join(' ');
             capturedBlack.textContent = capturedPieces.black.join(' ');
         }
+
+        // Función para que la IA haga un movimiento
+        function makeAIMove() {
+            const pieces = [];
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = getSquare(row, col);
+                    if (square.textContent && !isPieceWhite(square.textContent)) {
+                        pieces.push(square);
+                    }
+                }
+            }
+
+            if (pieces.length === 0) return;
+
+            const randomPiece = pieces[Math.floor(Math.random() * pieces.length)];
+            const row = parseInt(randomPiece.dataset.row);
+            const col = parseInt(randomPiece.dataset.col);
+            const piece = randomPiece.textContent;
+
+            showValidMoves(row, col, piece);
+
+            const possibleMoves = document.querySelectorAll('.possible-move');
+            if (possibleMoves.length > 0) {
+                const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                movePiece(randomPiece, randomMove);
+            }
+        }
+
+        // Función para verificar jaque mate
+        function isCheckmate() {
+            // Lógica básica para detectar jaque mate (puedes mejorarla)
+            return false;
+        }
+
+        // Función para actualizar el marcador
+        function updateScore(winner) {
+            if (winner === 'player') {
+                playerScore++;
+                playerWins.textContent = playerScore;
+            } else {
+                aiScore++;
+                aiWins.textContent = aiScore;
+            }
+        }
+
+        // Función para reiniciar el juego
+        function resetGame() {
+            createBoard();
+            isWhiteTurn = true;
+            turnIndicator.textContent = 'Turno: Blancas';
+            capturedPieces = { white: [], black: [] };
+            updateCapturedPieces();
+        }
+
+        // Función para guardar la partida
+        function saveGame() {
+            const gameState = {
+                board: [],
+                isWhiteTurn,
+                capturedPieces,
+                hasKingMoved,
+                hasRookMoved
+            };
+
+            for (let row = 0; row < 8; row++) {
+                gameState.board[row] = [];
+                for (let col = 0; col < 8; col++) {
+                    gameState.board[row][col] = getSquare(row, col).textContent;
+                }
+            }
+
+            localStorage.setItem('chessGame', JSON.stringify(gameState));
+            alert('Partida guardada!');
+        }
+
+        // Función para cargar la partida
+        function loadGame() {
+            const gameState = JSON.parse(localStorage.getItem('chessGame'));
+            if (!gameState) {
+                alert('No hay partida guardada.');
+                return;
+            }
+
+            isWhiteTurn = gameState.isWhiteTurn;
+            capturedPieces = gameState.capturedPieces;
+            hasKingMoved = gameState.hasKingMoved;
+            hasRookMoved = gameState.hasRookMoved;
+
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    getSquare(row, col).textContent = gameState.board[row][col];
+                }
+            }
+
+            updateCapturedPieces();
+            turnIndicator.textContent = `Turno: ${isWhiteTurn ? 'Blancas' : 'Negras'}`;
+            alert('Partida cargada!');
+        }
+
+        // Evento para activar/desactivar la IA
+        toggleAIButton.addEventListener('click', () => {
+            isAIActive = !isAIActive;
+            toggleAIButton.textContent = isAIActive ? 'Desactivar IA' : 'Activar IA';
+        });
+
+        // Evento para reiniciar el juego
+        resetGameButton.addEventListener('click', resetGame);
+
+        // Evento para guardar la partida
+        saveGameButton.addEventListener('click', saveGame);
+
+        // Evento para cargar la partida
+        loadGameButton.addEventListener('click', loadGame);
 
         // Iniciar el juego
         createBoard();
