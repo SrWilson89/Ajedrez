@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ajedrez Corregido</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #2d2d2d;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #333;
+        }
+
+        .game-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        .chess-container {
+            width: 90vmin;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .chess-board {
+            width: 100%;
+            aspect-ratio: 1/1;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            border: 4px solid #333;
+            background: #fff;
+        }
+
+        .square {
+            width: 100%;
+            aspect-ratio: 1/1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .white {
+            background-color: #f0d9b5;
+        }
+
+        .black {
+            background-color: #b58863;
+        }
+
+        .selected {
+            background-color: #f7ec63;
+        }
+
+        .possible-move::after {
+            content: '';
+            position: absolute;
+            width: 30%;
+            height: 30%;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 50%;
+        }
+
+        .turn-indicator {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #333;
+            color: white;
+            border-radius: 5px;
+        }
+
+        .captured-pieces {
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            margin: 10px 0;
+            padding: 10px;
+            background: #eee;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="turn-indicator" id="turnIndicator">Turno: Blancas</div>
+        <div class="captured-pieces" id="capturedBlack"></div>
+        <div class="chess-container">
+            <div class="chess-board" id="board"></div>
+        </div>
+        <div class="captured-pieces" id="capturedWhite"></div>
+    </div>
+
+    <script>
+        const board = document.getElementById('board');
+        const turnIndicator = document.getElementById('turnIndicator');
+        const capturedBlack = document.getElementById('capturedBlack');
+        const capturedWhite = document.getElementById('capturedWhite');
+        let selectedPiece = null;
+        let isWhiteTurn = true;
+        let capturedPieces = { white: [], black: [] };
+
+        // Posición inicial del tablero
+        const initialBoard = [
+            ['♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜'],
+            ['♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'],
+            ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖']
+        ];
+
+        function createBoard() {
+            board.innerHTML = ''; // Limpiar el tablero
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(row + col) % 2 === 0 ? 'white' : 'black'}`;
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    square.textContent = initialBoard[row][col];
+                    square.addEventListener('click', handleSquareClick);
+                    board.appendChild(square);
+                }
+            }
+        }
+
+        function handleSquareClick(event) {
+            const square = event.target;
+            const row = parseInt(square.dataset.row);
+            const col = parseInt(square.dataset.col);
+            const piece = square.textContent;
+
+            // Si ya hay una pieza seleccionada y se hace clic en una casilla válida
+            if (selectedPiece && square.classList.contains('possible-move')) {
+                movePiece(selectedPiece, square);
+                return;
+            }
+
+            // Verificar si es el turno correcto
+            if (piece && isPieceWhite(piece) !== isWhiteTurn) {
+                return;
+            }
+
+            // Deseleccionar pieza actual
+            if (selectedPiece === square) {
+                square.classList.remove('selected');
+                selectedPiece = null;
+                clearPossibleMoves();
+                return;
+            }
+
+            // Limpiar selección anterior
+            if (selectedPiece) {
+                selectedPiece.classList.remove('selected');
+                clearPossibleMoves();
+            }
+
+            // Seleccionar nueva pieza
+            if (piece) {
+                square.classList.add('selected');
+                selectedPiece = square;
+                showValidMoves(row, col, piece);
+            }
+        }
+
+        function isPieceWhite(piece) {
+            return '♔♕♖♗♘♙'.includes(piece);
+        }
+
+        function showValidMoves(row, col, piece) {
+            // Lógica simplificada para mostrar movimientos válidos
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    const square = getSquare(i, j);
+                    const targetPiece = square.textContent;
+                    if (!targetPiece || (isPieceWhite(targetPiece) !== isPieceWhite(piece))) {
+                        square.classList.add('possible-move');
+                    }
+                }
+            }
+        }
+
+        function clearPossibleMoves() {
+            const squares = document.querySelectorAll('.square');
+            squares.forEach(square => {
+                square.classList.remove('possible-move');
+            });
+        }
+
+        function movePiece(from, to) {
+            // Capturar pieza si existe
+            if (to.textContent) {
+                const capturedPiece = to.textContent;
+                if (isPieceWhite(capturedPiece)) {
+                    capturedPieces.white.push(capturedPiece);
+                } else {
+                    capturedPieces.black.push(capturedPiece);
+                }
+                updateCapturedPieces();
+            }
+
+            // Mover pieza
+            to.textContent = from.textContent;
+            from.textContent = '';
+
+            // Limpiar selección
+            from.classList.remove('selected');
+            clearPossibleMoves();
+            selectedPiece = null;
+
+            // Cambiar turno
+            isWhiteTurn = !isWhiteTurn;
+            turnIndicator.textContent = `Turno: ${isWhiteTurn ? 'Blancas' : 'Negras'}`;
+        }
+
+        function getSquare(row, col) {
+            return document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        }
+
+        function updateCapturedPieces() {
+            capturedWhite.textContent = capturedPieces.white.join(' ');
+            capturedBlack.textContent = capturedPieces.black.join(' ');
+        }
+
+        // Iniciar el juego
+        createBoard();
+    </script>
+</body>
+</html>
