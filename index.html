@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ajedrez Corregido</title>
+    <title>Ajedrez Completo</title>
     <style>
         * {
             margin: 0;
@@ -97,6 +97,25 @@
             background: #eee;
             border-radius: 5px;
         }
+
+        .promotion-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .promotion-option {
+            font-size: 40px;
+            cursor: pointer;
+            margin: 10px;
+        }
     </style>
 </head>
 <body>
@@ -109,14 +128,24 @@
         <div class="captured-pieces" id="capturedWhite"></div>
     </div>
 
+    <div class="promotion-modal" id="promotionModal">
+        <div class="promotion-option" data-piece="♕">♕</div>
+        <div class="promotion-option" data-piece="♖">♖</div>
+        <div class="promotion-option" data-piece="♗">♗</div>
+        <div class="promotion-option" data-piece="♘">♘</div>
+    </div>
+
     <script>
         const board = document.getElementById('board');
         const turnIndicator = document.getElementById('turnIndicator');
         const capturedBlack = document.getElementById('capturedBlack');
         const capturedWhite = document.getElementById('capturedWhite');
+        const promotionModal = document.getElementById('promotionModal');
         let selectedPiece = null;
         let isWhiteTurn = true;
         let capturedPieces = { white: [], black: [] };
+        let hasKingMoved = { white: false, black: false };
+        let hasRookMoved = { white: [false, false], black: [false, false] }; // [left rook, right rook]
 
         // Posición inicial del tablero
         const initialBoard = [
@@ -189,16 +218,136 @@
         }
 
         function showValidMoves(row, col, piece) {
-            // Lógica simplificada para mostrar movimientos válidos
-            for (let i = 0; i < 8; i++) {
-                for (let j = 0; j < 8; j++) {
-                    const square = getSquare(i, j);
-                    const targetPiece = square.textContent;
-                    if (!targetPiece || (isPieceWhite(targetPiece) !== isPieceWhite(piece))) {
-                        square.classList.add('possible-move');
+            clearPossibleMoves();
+            switch (piece) {
+                case '♙': // Peón blanco
+                    if (row > 0 && !getSquare(row - 1, col).textContent) {
+                        getSquare(row - 1, col).classList.add('possible-move');
+                        if (row === 6 && !getSquare(row - 2, col).textContent) {
+                            getSquare(row - 2, col).classList.add('possible-move');
+                        }
                     }
-                }
+                    if (row > 0 && col > 0 && getSquare(row - 1, col - 1).textContent && !isPieceWhite(getSquare(row - 1, col - 1).textContent)) {
+                        getSquare(row - 1, col - 1).classList.add('possible-move');
+                    }
+                    if (row > 0 && col < 7 && getSquare(row - 1, col + 1).textContent && !isPieceWhite(getSquare(row - 1, col + 1).textContent)) {
+                        getSquare(row - 1, col + 1).classList.add('possible-move');
+                    }
+                    break;
+                case '♟': // Peón negro
+                    if (row < 7 && !getSquare(row + 1, col).textContent) {
+                        getSquare(row + 1, col).classList.add('possible-move');
+                        if (row === 1 && !getSquare(row + 2, col).textContent) {
+                            getSquare(row + 2, col).classList.add('possible-move');
+                        }
+                    }
+                    if (row < 7 && col > 0 && getSquare(row + 1, col - 1).textContent && isPieceWhite(getSquare(row + 1, col - 1).textContent)) {
+                        getSquare(row + 1, col - 1).classList.add('possible-move');
+                    }
+                    if (row < 7 && col < 7 && getSquare(row + 1, col + 1).textContent && isPieceWhite(getSquare(row + 1, col + 1).textContent)) {
+                        getSquare(row + 1, col + 1).classList.add('possible-move');
+                    }
+                    break;
+                case '♖': // Torre blanca
+                case '♜': // Torre negra
+                    for (let i = row - 1; i >= 0; i--) {
+                        if (!addPossibleMove(i, col, piece)) break;
+                    }
+                    for (let i = row + 1; i < 8; i++) {
+                        if (!addPossibleMove(i, col, piece)) break;
+                    }
+                    for (let j = col - 1; j >= 0; j--) {
+                        if (!addPossibleMove(row, j, piece)) break;
+                    }
+                    for (let j = col + 1; j < 8; j++) {
+                        if (!addPossibleMove(row, j, piece)) break;
+                    }
+                    break;
+                case '♘': // Caballo blanco
+                case '♞': // Caballo negro
+                    const knightMoves = [
+                        [row - 2, col - 1], [row - 2, col + 1],
+                        [row - 1, col - 2], [row - 1, col + 2],
+                        [row + 1, col - 2], [row + 1, col + 2],
+                        [row + 2, col - 1], [row + 2, col + 1]
+                    ];
+                    knightMoves.forEach(([r, c]) => {
+                        if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                            addPossibleMove(r, c, piece);
+                        }
+                    });
+                    break;
+                case '♗': // Alfil blanco
+                case '♝': // Alfil negro
+                    for (let i = 1; i < 8; i++) {
+                        if (!addPossibleMove(row - i, col - i, piece)) break;
+                    }
+                    for (let i = 1; i < 8; i++) {
+                        if (!addPossibleMove(row - i, col + i, piece)) break;
+                    }
+                    for (let i = 1; i < 8; i++) {
+                        if (!addPossibleMove(row + i, col - i, piece)) break;
+                    }
+                    for (let i = 1; i < 8; i++) {
+                        if (!addPossibleMove(row + i, col + i, piece)) break;
+                    }
+                    break;
+                case '♕': // Reina blanca
+                case '♛': // Reina negra
+                    for (let i = row - 1; i >= 0; i--) {
+                        if (!addPossibleMove(i, col, piece)) break;
+                    }
+                    for (let i = row + 1; i < 8; i++) {
+                        if (!addPossibleMove(i, col, piece)) break;
+                    }
+                    for (let j = col - 1; j >= 0; j--) {
+                        if (!addPossibleMove(row, j, piece)) break;
+                    }
+                    for (let j = col + 1; j < 8; j++) {
+                        if (!addPossibleMove(row, j, piece)) break;
+                    }
+                    for (let i = 1; i < 8; i++) {
+                        if (!addPossibleMove(row - i, col - i, piece)) break;
+                    }
+                    for (let i = 1; i < 8; i++) {
+                        if (!addPossibleMove(row - i, col + i, piece)) break;
+                    }
+                    for (let i = 1; i < 8; i++) {
+                        if (!addPossibleMove(row + i, col - i, piece)) break;
+                    }
+                    for (let i = 1; i < 8; i++) {
+                        if (!addPossibleMove(row + i, col + i, piece)) break;
+                    }
+                    break;
+                case '♔': // Rey blanco
+                case '♚': // Rey negro
+                    for (let i = -1; i <= 1; i++) {
+                        for (let j = -1; j <= 1; j++) {
+                            if (i === 0 && j === 0) continue;
+                            addPossibleMove(row + i, col + j, piece);
+                        }
+                    }
+                    // Enroque
+                    if (!hasKingMoved[isWhiteTurn ? 'white' : 'black']) {
+                        if (!hasRookMoved[isWhiteTurn ? 'white' : 'black'][0] && !getSquare(row, col - 1).textContent && !getSquare(row, col - 2).textContent && !getSquare(row, col - 3).textContent) {
+                            getSquare(row, col - 2).classList.add('possible-move');
+                        }
+                        if (!hasRookMoved[isWhiteTurn ? 'white' : 'black'][1] && !getSquare(row, col + 1).textContent && !getSquare(row, col + 2).textContent) {
+                            getSquare(row, col + 2).classList.add('possible-move');
+                        }
+                    }
+                    break;
             }
+        }
+
+        function addPossibleMove(row, col, piece) {
+            if (row < 0 || row >= 8 || col < 0 || col >= 8) return false;
+            const targetSquare = getSquare(row, col);
+            const targetPiece = targetSquare.textContent;
+            if (!targetPiece || (isPieceWhite(targetPiece) !== isPieceWhite(piece))) {
+                targetSquare.classList.add('possible-move');
+            }
+            return !targetPiece;
         }
 
         function clearPossibleMoves() {
@@ -209,6 +358,24 @@
         }
 
         function movePiece(from, to) {
+            const fromRow = parseInt(from.dataset.row);
+            const fromCol = parseInt(from.dataset.col);
+            const toRow = parseInt(to.dataset.row);
+            const toCol = parseInt(to.dataset.col);
+            const piece = from.textContent;
+
+            // Enroque
+            if (piece === '♔' || piece === '♚') {
+                if (Math.abs(toCol - fromCol) === 2) {
+                    const rookCol = toCol > fromCol ? 7 : 0;
+                    const rook = getSquare(fromRow, rookCol);
+                    const newRookCol = toCol > fromCol ? toCol - 1 : toCol + 1;
+                    getSquare(fromRow, newRookCol).textContent = rook.textContent;
+                    rook.textContent = '';
+                }
+                hasKingMoved[isWhiteTurn ? 'white' : 'black'] = true;
+            }
+
             // Capturar pieza si existe
             if (to.textContent) {
                 const capturedPiece = to.textContent;
@@ -224,6 +391,11 @@
             to.textContent = from.textContent;
             from.textContent = '';
 
+            // Promoción de peón
+            if ((piece === '♙' && toRow === 0) || (piece === '♟' && toRow === 7)) {
+                showPromotionModal(to);
+            }
+
             // Limpiar selección
             from.classList.remove('selected');
             clearPossibleMoves();
@@ -232,6 +404,17 @@
             // Cambiar turno
             isWhiteTurn = !isWhiteTurn;
             turnIndicator.textContent = `Turno: ${isWhiteTurn ? 'Blancas' : 'Negras'}`;
+        }
+
+        function showPromotionModal(square) {
+            promotionModal.style.display = 'block';
+            const options = document.querySelectorAll('.promotion-option');
+            options.forEach(option => {
+                option.addEventListener('click', () => {
+                    square.textContent = option.dataset.piece;
+                    promotionModal.style.display = 'none';
+                });
+            });
         }
 
         function getSquare(row, col) {
