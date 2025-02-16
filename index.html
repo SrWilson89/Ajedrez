@@ -192,6 +192,351 @@
     </div>
 
     <script>
+        // Función auxiliar para verificar si una casilla está bajo ataque
+function isSquareUnderAttack(row, col, defendingColor) {
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const piece = getSquare(r, c).textContent;
+            if (piece && isPieceWhite(piece) !== (defendingColor === 'white')) {
+                // Simular movimientos del oponente para ver si pueden atacar la casilla
+                showValidMoves(r, c, piece);
+                const attacks = document.querySelectorAll('.possible-move');
+                for (const attack of attacks) {
+                    if (parseInt(attack.dataset.row) === row && 
+                        parseInt(attack.dataset.col) === col) {
+                        clearPossibleMoves();
+                        return true;
+                    }
+                }
+                clearPossibleMoves();
+            }
+        }
+    }
+    return false;
+}
+
+// Función para verificar si el enroque es legal
+function isCastlingLegal(kingRow, kingCol, targetCol, color) {
+    // 1. El rey no debe haberse movido
+    if (hasKingMoved[color]) {
+        return { legal: false, reason: "El rey ya se ha movido" };
+    }
+
+    // 2. Determinar qué torre y si se ha movido
+    const isKingSide = targetCol > kingCol;
+    const rookCol = isKingSide ? 7 : 0;
+    const rookIndex = isKingSide ? 1 : 0;
+    
+    if (hasRookMoved[color][rookIndex]) {
+        return { legal: false, reason: "La torre ya se ha movido" };
+    }
+
+    // 3. Verificar que la torre está en su posición original
+    const rook = getSquare(kingRow, rookCol);
+    const expectedRook = color === 'white' ? '♖' : '♜';
+    if (rook.textContent !== expectedRook) {
+        return { legal: false, reason: "No hay torre en la posición correcta" };
+    }
+
+    // 4. Verificar que no hay piezas entre el rey y la torre
+    const direction = isKingSide ? 1 : -1;
+    const pathStart = kingCol + direction;
+    const pathEnd = isKingSide ? rookCol - 1 : rookCol + 1;
+    
+    for (let col = pathStart; isKingSide ? col <= pathEnd : col >= pathEnd; col += direction) {
+        if (getSquare(kingRow, col).textContent) {
+            return { legal: false, reason: "Hay piezas entre el rey y la torre" };
+        }
+    }
+
+    // 5. Verificar que el rey no está en jaque
+    if (isSquareUnderAttack(kingRow, kingCol, color)) {
+        return { legal: false, reason: "El rey está en jaque" };
+    }
+
+    // 6. Verificar que el rey no pasa por casillas atacadas
+    const castlingPath = isKingSide ? [1, 2] : [-1, -2];
+    for (const colOffset of castlingPath) {
+        if (isSquareUnderAttack(kingRow, kingCol + colOffset, color)) {
+            return { legal: false, reason: "El rey pasaría por una casilla atacada" };
+        }
+    }
+
+    return { legal: true };
+}
+
+// Función para realizar el enroque
+function performCastling(kingSquare, targetSquare) {
+    const kingRow = parseInt(kingSquare.dataset.row);
+    const kingCol = parseInt(kingSquare.dataset.col);
+    const targetCol = parseInt(targetSquare.dataset.col);
+    const color = isPieceWhite(kingSquare.textContent) ? 'white' : 'black';
+    
+    const castlingCheck = isCastlingLegal(kingRow, kingCol, targetCol, color);
+    
+    if (!castlingCheck.legal) {
+        alert(`No se puede enrocar: ${castlingCheck.reason}`);
+        return false;
+    }
+
+    // Realizar el enroque
+    const isKingSide = targetCol > kingCol;
+    const rookCol = isKingSide ? 7 : 0;
+    const newRookCol = isKingSide ? targetCol - 1 : targetCol + 1;
+    
+    // Mover la torre
+    const rook = getSquare(kingRow, rookCol);
+    getSquare(kingRow, newRookCol).textContent = rook.textContent;
+    rook.textContent = '';
+    
+    // Mover el rey
+    targetSquare.textContent = kingSquare.textContent;
+    kingSquare.textContent = '';
+    
+    // Actualizar estados
+    hasKingMoved[color] = true;
+    hasRookMoved[color][isKingSide ? 1 : 0] = true;
+    
+    return true;
+}
+
+// Modificación de la función showValidMoves para incluir el enroque
+function showValidMoves(row, col, piece) {
+    // ... (resto del código existente de showValidMoves)
+    
+    // Añadir lógica para el enroque
+    if (piece === '♔' || piece === '♚') {
+        const color = isPieceWhite(piece) ? 'white' : 'black';
+        
+        // Verificar enroque corto
+        if (isCastlingLegal(row, col, col + 2, color).legal) {
+            getSquare(row, col + 2).classList.add('possible-move');
+        }
+        
+        // Verificar enroque largo
+        if (isCastlingLegal(row, col, col - 2, color).legal) {
+            getSquare(row, col - 2).classList.add('possible-move');
+        }
+    }
+}
+// Constantes para piezas
+const PIECES = {
+    WHITE: {
+        KING: '♔',
+        ROOK: '♖'
+    },
+    BLACK: {
+        KING: '♚',
+        ROOK: '♜'
+    }
+};
+
+// Función auxiliar para verificar si una casilla está bajo ataque
+function isSquareUnderAttack(row, col, defendingColor) {
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const piece = getSquare(r, c).textContent;
+            if (piece && isPieceWhite(piece) !== (defendingColor === 'white')) {
+                // Simular movimientos del oponente para ver si pueden atacar la casilla
+                showValidMoves(r, c, piece);
+                const attacks = document.querySelectorAll('.possible-move');
+                for (const attack of attacks) {
+                    if (parseInt(attack.dataset.row) === row && 
+                        parseInt(attack.dataset.col) === col) {
+                        clearPossibleMoves();
+                        return true;
+                    }
+                }
+                clearPossibleMoves();
+            }
+        }
+    }
+    return false;
+}
+
+// Función para verificar si el enroque es legal
+function isCastlingLegal(kingRow, kingCol, targetCol, color) {
+    // Verificar que las coordenadas son correctas para el color
+    const correctRow = color === 'white' ? 7 : 0;
+    if (kingRow !== correctRow) {
+        return { legal: false, reason: "Posición inicial del rey incorrecta" };
+    }
+
+    // 1. El rey no debe haberse movido
+    if (hasKingMoved[color]) {
+        return { legal: false, reason: `El rey ${color === 'white' ? 'blanco' : 'negro'} ya se ha movido` };
+    }
+
+    // 2. Determinar qué torre y si se ha movido
+    const isKingSide = targetCol > kingCol;
+    const rookCol = isKingSide ? 7 : 0;
+    const rookIndex = isKingSide ? 1 : 0;
+    
+    if (hasRookMoved[color][rookIndex]) {
+        return { legal: false, reason: `La torre ${isKingSide ? 'del lado del rey' : 'del lado de la reina'} ya se ha movido` };
+    }
+
+    // 3. Verificar que la torre está en su posición original
+    const rook = getSquare(kingRow, rookCol);
+    const expectedRook = color === 'white' ? PIECES.WHITE.ROOK : PIECES.BLACK.ROOK;
+    if (rook.textContent !== expectedRook) {
+        return { legal: false, reason: "No hay torre en la posición correcta" };
+    }
+
+    // 4. Verificar que no hay piezas entre el rey y la torre
+    const direction = isKingSide ? 1 : -1;
+    const pathStart = kingCol + direction;
+    const pathEnd = isKingSide ? rookCol - 1 : rookCol + 1;
+    
+    for (let col = pathStart; isKingSide ? col <= pathEnd : col >= pathEnd; col += direction) {
+        if (getSquare(kingRow, col).textContent) {
+            return { legal: false, reason: "Hay piezas entre el rey y la torre" };
+        }
+    }
+
+    // 5. Verificar que el rey no está en jaque
+    if (isSquareUnderAttack(kingRow, kingCol, color)) {
+        return { legal: false, reason: "El rey está en jaque" };
+    }
+
+    // 6. Verificar que el rey no pasa por casillas atacadas
+    const castlingPath = isKingSide ? [1, 2] : [-1, -2];
+    for (const colOffset of castlingPath) {
+        if (isSquareUnderAttack(kingRow, kingCol + colOffset, color)) {
+            return { legal: false, reason: "El rey pasaría por una casilla atacada" };
+        }
+    }
+
+    return { legal: true };
+}
+
+// Función para realizar el enroque
+function performCastling(kingSquare, targetSquare) {
+    const kingRow = parseInt(kingSquare.dataset.row);
+    const kingCol = parseInt(kingSquare.dataset.col);
+    const targetCol = parseInt(targetSquare.dataset.col);
+    const piece = kingSquare.textContent;
+    const color = piece === PIECES.WHITE.KING ? 'white' : 'black';
+    
+    const castlingCheck = isCastlingLegal(kingRow, kingCol, targetCol, color);
+    
+    if (!castlingCheck.legal) {
+        alert(`No se puede enrocar: ${castlingCheck.reason}`);
+        return false;
+    }
+
+    // Realizar el enroque
+    const isKingSide = targetCol > kingCol;
+    const rookCol = isKingSide ? 7 : 0;
+    const newRookCol = isKingSide ? targetCol - 1 : targetCol + 1;
+    
+    // Mover la torre
+    const rook = getSquare(kingRow, rookCol);
+    getSquare(kingRow, newRookCol).textContent = rook.textContent;
+    rook.textContent = '';
+    
+    // Mover el rey
+    targetSquare.textContent = kingSquare.textContent;
+    kingSquare.textContent = '';
+    
+    // Actualizar estados
+    hasKingMoved[color] = true;
+    hasRookMoved[color][isKingSide ? 1 : 0] = true;
+    
+    return true;
+}
+
+// Modificación de la función showValidMoves para incluir el enroque
+function showValidMoves(row, col, piece) {
+    clearPossibleMoves();
+    
+    // Lógica específica para el enroque
+    if (piece === PIECES.WHITE.KING || piece === PIECES.BLACK.KING) {
+        const color = piece === PIECES.WHITE.KING ? 'white' : 'black';
+        const correctRow = color === 'white' ? 7 : 0;
+        
+        if (row === correctRow && col === 4) { // Verificar que el rey está en su posición inicial
+            // Verificar enroque corto
+            if (isCastlingLegal(row, col, col + 2, color).legal) {
+                getSquare(row, col + 2).classList.add('possible-move');
+            }
+            
+            // Verificar enroque largo
+            if (isCastlingLegal(row, col, col - 2, color).legal) {
+                getSquare(row, col - 2).classList.add('possible-move');
+            }
+        }
+    }
+    
+    // Resto de la lógica de movimientos existente
+    // ... (mantener el código existente para otros movimientos)
+}
+
+// Modificación de la función movePiece para incluir el enroque mejorado
+function movePiece(from, to) {
+    const piece = from.textContent;
+    const fromCol = parseInt(from.dataset.col);
+    const toCol = parseInt(to.dataset.col);
+    
+    // Verificar si es un movimiento de enroque
+    if ((piece === PIECES.WHITE.KING || piece === PIECES.BLACK.KING) && Math.abs(toCol - fromCol) === 2) {
+        if (!performCastling(from, to)) {
+            return; // Si el enroque no es legal, cancelar el movimiento
+        }
+    } else {
+        // Realizar movimiento normal
+        // ... (resto del código existente de movePiece)
+    }
+    
+    // Actualizar el estado del juego
+    if (piece === PIECES.WHITE.KING || piece === PIECES.BLACK.KING) {
+        hasKingMoved[piece === PIECES.WHITE.KING ? 'white' : 'black'] = true;
+    } else if (piece === PIECES.WHITE.ROOK || piece === PIECES.BLACK.ROOK) {
+        const color = piece === PIECES.WHITE.ROOK ? 'white' : 'black';
+        const rookIndex = fromCol === 0 ? 0 : 1;
+        hasRookMoved[color][rookIndex] = true;
+    }
+    
+    // ... (resto del código de movePiece para finalizar el turno)
+}
+
+// Función para reiniciar el estado del enroque al comenzar una nueva partida
+function resetCastlingState() {
+    hasKingMoved = {
+        white: false,
+        black: false
+    };
+    hasRookMoved = {
+        white: [false, false], // [Torre izquierda, Torre derecha]
+        black: [false, false]
+    };
+}
+
+// Asegurarse de llamar a resetCastlingState() en la función resetGame()
+const originalResetGame = resetGame;
+function resetGame() {
+    resetCastlingState();
+    originalResetGame();
+}
+
+// Modificación de la función movePiece para incluir el enroque mejorado
+function movePiece(from, to) {
+    const piece = from.textContent;
+    const fromCol = parseInt(from.dataset.col);
+    const toCol = parseInt(to.dataset.col);
+    
+    // Verificar si es un movimiento de enroque
+    if ((piece === '♔' || piece === '♚') && Math.abs(toCol - fromCol) === 2) {
+        if (!performCastling(from, to)) {
+            return; // Si el enroque no es legal, cancelar el movimiento
+        }
+    } else {
+        // Realizar movimiento normal
+        // ... (resto del código existente de movePiece)
+    }
+    
+    // ... (resto del código de movePiece para finalizar el turno)
+}
         const board = document.getElementById('board');
         const turnIndicator = document.getElementById('turnIndicator');
         const capturedBlack = document.getElementById('capturedBlack');
@@ -737,6 +1082,231 @@ function finishMove(from, to) {
         updateScore(isWhiteTurn ? 'ai' : 'player');
         resetGame();
     }
+}
+// Función para evaluar la posición del tablero
+function evaluateBoard() {
+    let score = 0;
+    const pieceValues = {
+        '♙': 1, '♟': -1,
+        '♘': 3, '♞': -3,
+        '♗': 3, '♝': -3,
+        '♖': 5, '♜': -5,
+        '♕': 9, '♛': -9,
+        '♔': 100, '♚': -100
+    };
+
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const piece = getSquare(row, col).textContent;
+            if (piece in pieceValues) {
+                score += pieceValues[piece];
+            }
+        }
+    }
+    return score;
+}
+
+// Función Minimax con poda alfa-beta
+function minimax(depth, alpha, beta, maximizingPlayer) {
+    if (depth === 0) {
+        return evaluateBoard();
+    }
+
+    const moves = getAllPossibleMoves(maximizingPlayer ? 'black' : 'white');
+    if (maximizingPlayer) {
+        let maxEval = -Infinity;
+        for (const move of moves) {
+            const { from, to } = move;
+            const capturedPiece = to.textContent;
+            to.textContent = from.textContent;
+            from.textContent = '';
+            const evaluation = minimax(depth - 1, alpha, beta, false);
+            from.textContent = to.textContent;
+            to.textContent = capturedPiece;
+            maxEval = Math.max(maxEval, evaluation);
+            alpha = Math.max(alpha, evaluation);
+            if (beta <= alpha) break;
+        }
+        return maxEval;
+    } else {
+        let minEval = Infinity;
+        for (const move of moves) {
+            const { from, to } = move;
+            const capturedPiece = to.textContent;
+            to.textContent = from.textContent;
+            from.textContent = '';
+            const evaluation = minimax(depth - 1, alpha, beta, true);
+            from.textContent = to.textContent;
+            to.textContent = capturedPiece;
+            minEval = Math.min(minEval, evaluation);
+            beta = Math.min(beta, evaluation);
+            if (beta <= alpha) break;
+        }
+        return minEval;
+    }
+}
+
+// Función para obtener todos los movimientos posibles de un jugador
+function getAllPossibleMoves(color) {
+    const moves = [];
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const square = getSquare(row, col);
+            const piece = square.textContent;
+            if (piece && (isPieceWhite(piece) === (color === 'white'))) {
+                showValidMoves(row, col, piece);
+                const possibleMoves = document.querySelectorAll('.possible-move');
+                possibleMoves.forEach(move => {
+                    moves.push({ from: square, to: move });
+                });
+                clearPossibleMoves();
+            }
+        }
+    }
+    return moves;
+}
+
+// Función para que la IA haga un movimiento usando Minimax
+function makeAIMove() {
+    const depth = 3; // Profundidad de búsqueda
+    let bestMove = null;
+    let bestValue = -Infinity;
+
+    const moves = getAllPossibleMoves('black');
+    for (const move of moves) {
+        const { from, to } = move;
+        const capturedPiece = to.textContent;
+        to.textContent = from.textContent;
+        from.textContent = '';
+        const moveValue = minimax(depth - 1, -Infinity, Infinity, false);
+        from.textContent = to.textContent;
+        to.textContent = capturedPiece;
+
+        if (moveValue > bestValue) {
+            bestValue = moveValue;
+            bestMove = move;
+        }
+    }
+
+    if (bestMove) {
+        movePiece(bestMove.from, bestMove.to);
+    }
+}
+// Función para mover una pieza (incluyendo el enroque)
+function movePiece(from, to) {
+    const fromRow = parseInt(from.dataset.row);
+    const fromCol = parseInt(from.dataset.col);
+    const toRow = parseInt(to.dataset.row);
+    const toCol = parseInt(to.dataset.col);
+    const piece = from.textContent;
+
+    // Enroque corto (0-0) o enroque largo (0-0-0)
+    if (piece === '♔' || piece === '♚') {
+        if (Math.abs(toCol - fromCol) === 2) {
+            // Determinar si es enroque corto o largo
+            const isShortCastle = toCol > fromCol;
+            const rookCol = isShortCastle ? 7 : 0;
+            const rook = getSquare(fromRow, rookCol);
+            const newRookCol = isShortCastle ? toCol - 1 : toCol + 1;
+
+            // Verificar que la torre no se haya movido
+            const color = isPieceWhite(piece) ? 'white' : 'black';
+            const rookIndex = isShortCastle ? 1 : 0;
+            if (hasRookMoved[color][rookIndex]) {
+                alert("No se puede enrocar: la torre ya se ha movido.");
+                return;
+            }
+
+            // Verificar que no haya piezas entre el rey y la torre
+            const start = Math.min(fromCol, rookCol) + 1;
+            const end = Math.max(fromCol, rookCol);
+            for (let col = start; col < end; col++) {
+                if (getSquare(fromRow, col).textContent) {
+                    alert("No se puede enrocar: hay piezas en el camino.");
+                    return;
+                }
+            }
+
+            // Verificar que el rey no esté en jaque, ni pase por casillas controladas
+            for (let col = fromCol; col !== toCol; col += (toCol > fromCol ? 1 : -1)) {
+                if (isSquareUnderAttack(fromRow, col, color)) {
+                    alert("No se puede enrocar: el rey está en jaque o pasa por casillas controladas.");
+                    return;
+                }
+            }
+
+            // Realizar el enroque
+            getSquare(fromRow, newRookCol).textContent = rook.textContent;
+            rook.textContent = '';
+            hasKingMoved[color] = true;
+            hasRookMoved[color][rookIndex] = true;
+        } else {
+            hasKingMoved[isPieceWhite(piece) ? 'white' : 'black'] = true;
+        }
+    }
+
+    // Capturar pieza si existe
+    if (to.textContent) {
+        const capturedPiece = to.textContent;
+        if (isPieceWhite(capturedPiece)) {
+            capturedPieces.white.push(capturedPiece);
+        } else {
+            capturedPieces.black.push(capturedPiece);
+        }
+        updateCapturedPieces();
+    }
+
+    // Mover pieza
+    to.textContent = from.textContent;
+    from.textContent = '';
+
+    // Promoción de peón
+    if ((piece === '♙' && toRow === 0) || (piece === '♟' && toRow === 7)) {
+        showPromotionModal(to);
+        return; // Retrasar el cambio de turno hasta que se seleccione la promoción
+    }
+
+    // Limpiar selección
+    from.classList.remove('selected');
+    clearPossibleMoves();
+    selectedPiece = null;
+
+    // Cambiar turno
+    isWhiteTurn = !isWhiteTurn;
+    turnIndicator.textContent = `Turno: ${isWhiteTurn ? 'Blancas' : 'Negras'}`;
+
+    // Verificar jaque mate o ahogado
+    if (isCheckmate()) {
+        alert(isWhiteTurn ? 'Negras ganan!' : 'Blancas ganan!');
+        updateScore(isWhiteTurn ? 'ai' : 'player');
+        resetGame();
+    }
+}
+
+// Función para verificar si una casilla está bajo ataque
+function isSquareUnderAttack(row, col, color) {
+    // Verificar si alguna pieza del oponente puede atacar la casilla (row, col)
+    const opponentColor = color === 'white' ? 'black' : 'white';
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const square = getSquare(r, c);
+            const piece = square.textContent;
+            if (piece && isPieceWhite(piece) === (opponentColor === 'white')) {
+                showValidMoves(r, c, piece);
+                const possibleMoves = document.querySelectorAll('.possible-move');
+                for (const move of possibleMoves) {
+                    const moveRow = parseInt(move.dataset.row);
+                    const moveCol = parseInt(move.dataset.col);
+                    if (moveRow === row && moveCol === col) {
+                        clearPossibleMoves();
+                        return true;
+                    }
+                }
+                clearPossibleMoves();
+            }
+        }
+    }
+    return false;
 }
     </script>
 </body>
