@@ -1,0 +1,223 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(45deg, #2c3e50, #3498db);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #fff;
+}
+
+.game-container {
+    background: rgba(45, 45, 45, 0.95);
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    width: 90%;
+    max-width: 700px;
+    margin: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.chess-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+.chess-board {
+    width: 100%;
+    aspect-ratio: 1/1;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    border: 6px solid #34495e;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+}
+
+.square {
+    width: 100%;
+    aspect-ratio: 1/1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 4.5vmin;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.square:hover {
+    transform: scale(1.05);
+    z-index: 2;
+}
+
+.white {
+    background-color: #ecf0f1;
+}
+
+.black {
+    background-color: #95a5a6;
+}
+
+.selected {
+    background-color: #f1c40f;
+    box-shadow: inset 0 0 20px rgba(241, 196, 15, 0.5);
+}
+
+.possible-move::after {
+    content: '';
+    position: absolute;
+    width: 35%;
+    height: 35%;
+    background-color: rgba(46, 204, 113, 0.4);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.8); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(0.8); opacity: 0.5; }
+}
+
+.turn-indicator {
+    text-align: center;
+    font-size: 3.5vmin;
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #34495e;
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease;
+}
+
+.captured-pieces {
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    font-size: 3.5vmin;
+    margin: 15px 0;
+    padding: 12px;
+    background: #34495e;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Estilo para las piezas negras */
+.square:not(.selected):not(.possible-move) {
+    color: #2c3e50;
+}
+
+.square[data-piece^="♜"],
+.square[data-piece^="♞"],
+.square[data-piece^="♝"],
+.square[data-piece^="♛"],
+.square[data-piece^="♚"],
+.square[data-piece^="♟"] {
+    color: #000;
+}
+
+.promotion-modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(52, 73, 94, 0.98);
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    animation: modalFadeIn 0.4s ease;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translate(-50%, -60%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+.promotion-option {
+    font-size: 7vmin;
+    cursor: pointer;
+    margin: 12px;
+    padding: 10px;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.promotion-option:hover {
+    transform: scale(1.15);
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.scoreboard {
+    display: flex;
+    justify-content: space-around;
+    margin: 15px 0;
+    font-size: 3vmin;
+    background: #34495e;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.menu {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.menu button {
+    padding: 12px 25px;
+    font-size: 2.8vmin;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    background: #3498db;
+    color: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.menu button:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.menu button:active {
+    transform: translateY(1px);
+}
+
+@media (max-width: 600px) {
+    .game-container {
+        padding: 15px;
+        width: 95%;
+    }
+    
+    .menu {
+        gap: 10px;
+    }
+    
+    .menu button {
+        padding: 10px 20px;
+        font-size: 3.5vmin;
+        width: calc(50% - 10px);
+    }
+}
