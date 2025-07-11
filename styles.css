@@ -221,3 +221,17 @@ body {
         width: calc(50% - 10px);
     }
 }
+.color-picker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    color: #fff;
+    font-size: 2.5vmin;
+}
+
+.color-picker label {
+    margin: 0 5px;
+}

@@ -647,3 +647,38 @@ loadGameButton.addEventListener('click', loadGame);
 
 // Iniciar el juego
 createBoard();
+const whiteColorPicker = document.getElementById('whiteColor');
+const blackColorPicker = document.getElementById('blackColor');
+
+// Aplica los colores elegidos
+function applyPieceColors() {
+    const whiteColor = whiteColorPicker.value;
+    const blackColor = blackColorPicker.value;
+
+    document.querySelectorAll('.square').forEach(square => {
+        const piece = square.textContent;
+        if (!piece) return;
+
+        if ('♔♕♖♗♘♙'.includes(piece)) {
+            square.style.color = whiteColor;
+        } else {
+            square.style.color = blackColor;
+        }
+    });
+
+    localStorage.setItem('whiteColor', whiteColor);
+    localStorage.setItem('blackColor', blackColor);
+}
+
+// Evento al cambiar color
+whiteColorPicker.addEventListener('input', applyPieceColors);
+blackColorPicker.addEventListener('input', applyPieceColors);
+
+// Aplicar colores guardados al cargar
+window.addEventListener('DOMContentLoaded', () => {
+    const storedWhite = localStorage.getItem('whiteColor');
+    const storedBlack = localStorage.getItem('blackColor');
+    if (storedWhite) whiteColorPicker.value = storedWhite;
+    if (storedBlack) blackColorPicker.value = storedBlack;
+    applyPieceColors();
+});
